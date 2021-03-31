@@ -69,7 +69,7 @@ def removePequenas(lista):
     clean_text = []
     for word in lista:
         if len(word)<=2:
-            if word == 'kv' or word == 'mw' or word == 'sg':
+            if word == 'kv' or word == 'mw':
                 clean_text.append(word)
         
         else:
@@ -95,9 +95,21 @@ def getStopWords():
     
     with open('agentes.txt', 'r') as f:
         stop_words_agentes = f.readlines()
-    
+        
     stop_words_agentes = [x.strip() for x in stop_words_agentes]
     stop_words.extend(stop_words_agentes)
+    
+    with open('numeros.txt', 'r') as f:
+        stop_words_numeros = f.readlines()
+    
+    top_words_numeros = [x.strip() for x in stop_words_numeros]
+    #stop_words.extend(stop_words_numeros)
+    
+    with open('subestacoes.txt', 'r') as f:
+        stop_words_subestacoes = f.readlines()
+    
+    stop_words_subestacoes = [x.strip() for x in stop_words_subestacoes]
+    stop_words.extend(stop_words_subestacoes)
     
     stop_words = removePlural(stop_words)
     stop_words = removeRepetidos(stop_words)

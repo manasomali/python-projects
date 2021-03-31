@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from wordcloud import WordCloud
 
-new_file = csv.reader(open('input/transcricoes_tratadas.csv', 'r'),delimiter='_')
+new_file = csv.reader(open('input/Pasta1.csv', 'r'),delimiter='_')
 cont_h = np.zeros(24)
 cont_d = np.zeros(35)
 alltext = ""
@@ -132,30 +132,36 @@ for row in tqdm(list(new_file)):
         cont_h[23]+=1
 
     alltext = alltext + " " + row[4]
-    
 
+plt.figure()
 obj1 = ("00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23")
 y = np.arange(len(obj1))
 x = cont_h
 plt.bar(y,x)
 plt.xticks(np.arange(len(obj1)),obj1,rotation=20)
-plt.title("Quantidade de ligações em relação as horas do dia")
-plt.xlabel("Hora")
+plt.title("Histograma de ligações em relação as horas do dia")
 plt.ylabel("Quantidade de Ligações")
-    
+plt.xlabel("Hora")
 
+plt.figure()
 obj2 = ("0101","0102","0103","0104","0105","0106","0107","0108","0109","0110","0111","0112","0113","0114","0115","0116","0117","0118","0119","0120","0121","0122","0123","0124","0125","0126","0127","0128","0129","0130","0131","0209","0310","0413","0630")
 y = np.arange(len(obj2))
 x = cont_d
 plt.bar(y,x)
 plt.xticks(np.arange(len(obj2)),obj2,rotation=90)
-plt.title("Quantidade de ligações em relação aos dias")
+plt.title("Histograma de ligações em relação aos dias")
 plt.xlabel("Dia")
 plt.ylabel("Quantidade de Ligações")
 
 
-wordcloud = WordCloud(max_font_size=40).generate(alltext)
-plt.figure()
-plt.imshow(wordcloud, interpolation="bilinear")
-plt.axis("off")
-plt.show()
+for color in ['Dark2', 'prism']:
+    wordcloud = WordCloud(max_font_size=25, 
+                          background_color='white',
+                          contour_color='white',
+                          colormap=color).generate(alltext)
+    plt.figure()
+    plt.imshow(wordcloud, interpolation="bilinear")
+    plt.axis("off")
+    plt.savefig(str(color)+'.png', dpi=300, facecolor='w', edgecolor='w',
+        orientation='landscape', format='png')
+    plt.show()
