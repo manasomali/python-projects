@@ -139,8 +139,12 @@ agrupa-transcricoes/output/*
 analise-textos/input/*
 classification/input/*
 classification/output/*
+tensorflow-classification/input/*
+tensorflow-classification/output/*
 clustering/input/*
 clustering/output/*
+split-dataset/input/*
+split-dataset/output/*
 corrige-nome-audios/input/*
 corrige-nome-audios/output/*
 processamento-textos/input/*
@@ -172,3 +176,7 @@ transcricao-audios/output/*
 !separador-audios/output/.gitkeep
 !transcricao-audios/input/.gitkeep
 !transcricao-audios/output/.gitkeep
+!tensorflow-classification/input/.gitkeep
+!tensorflow-classification/output/.gitkeep
+!split-dataset/input/.gitkeep
+!split-dataset/output/.gitkeep

@@ -77,7 +77,8 @@ def removePequenas(lista):
                 
     return clean_text
 
-def getStopWords():
+def getStopWords(removernomes, removeragentes, removernumeros, removersubestacoes):
+    print('\n')
     # remove stop words
     #stop_words = nltk.corpus.stopwords.words('portuguese')
     stop_words = ['a', 'ao', 'aos', 'aquela', 'aquelas', 'aquele', 'aqueles', 'aquilo', 'as', 'ate', 'até', 'com', 'como', 'da', 'das', 'de', 'dela', 'delas', 'dele', 'deles', 'depois', 'do', 'dos', 'e', 'ela', 'elas', 'ele', 'eles', 'em', 'entre', 'era', 'eram', 'eramos', 'essa', 'essas', 'esse', 'esses', 'esta', 'estamos', 'estao', 'estão', 'estas', 'estava', 'estavam', 'estavamos', 'este', 'esteja', 'estejam', 'estejamos', 'estes', 'esteve', 'estive', 'estivemos', 'estiver', 'estivera', 'estiveram', 'estiveramos', 'estiverem', 'estivermos', 'estivesse', 'estivessem', 'estivessemos', 'estou', 'eu', 'foi', 'fomos', 'for', 'fora', 'foram', 'foramos', 'forem', 'formos', 'fosse', 'fossem', 'fossemos', 'fôssemos', 'fui', 'ha', 'há', 'haja', 'hajam', 'hajamos', 'hao', 'havemos', 'havia', 'hei', 'houve', 'houvemos', 'houver', 'houvera', 'houveram', 'houveramos', 'houverao', 'houverei', 'houverem', 'houveremos', 'houveria', 'houveriam', 'houveriamos', 'houvermos', 'houvesse', 'houvessem', 'houvessemos', 'isso', 'isto', 'ja', 'lhe', 'lhes', 'mais', 'mas', 'me', 'mesmo', 'meu', 'meus', 'minha', 'minhas', 'muito', 'na', 'nao', 'nas', 'nem', 'no', 'nos', 'nós', 'nossa', 'nossas', 'nosso', 'nossos', 'num', 'numa', 'o', 'os', 'ou', 'para', 'pela', 'pelas', 'pelo', 'pelos', 'por', 'qual', 'quando', 'que', 'quem', 'sao', 'se', 'seja', 'sejam', 'sejamos', 'sem', 'ser', 'sera', 'serao', 'serei', 'seremos', 'seria', 'seriam', 'seriamos', 'seríamos', 'seu', 'seus', 'so', 'somos', 'sou', 'sua', 'suas', 'tambem', 'te', 'tem', 'temos', 'tenha', 'tenham', 'tenhamos', 'tenho', 'ter', 'tera', 'terao', 'terei', 'teremos', 'teria', 'teriam', 'teriamos', 'teu', 'teus', 'teve', 'tinha', 'tinham', 'tinhamos', 'tive', 'tivemos', 'tiver', 'tivera', 'tiveram', 'tiveramos', 'tiverem', 'tivermos', 'tivesse', 'tivessem', 'tivessemos', 'tu', 'tua', 'tuas', 'um', 'uma', 'voce', 'voces', 'vos']
@@ -87,33 +88,42 @@ def getStopWords():
     stop_words_personal = [x.strip() for x in stop_words_personal] 
     stop_words.extend(stop_words_personal)
     
-    with open('nomes.txt', 'r') as f:
-        stop_words_nomes = f.readlines()
-    
-    stop_words_nomes = [x.strip() for x in stop_words_nomes]
-    stop_words.extend(stop_words_nomes)
-    
-    with open('agentes.txt', 'r') as f:
-        stop_words_agentes = f.readlines()
+    if removernomes==True:
+        print('removernomes ')
+        with open('nomes.txt', 'r') as f:
+            stop_words_nomes = f.readlines()
         
-    stop_words_agentes = [x.strip() for x in stop_words_agentes]
-    stop_words.extend(stop_words_agentes)
+        stop_words_nomes = [x.strip() for x in stop_words_nomes]
+        stop_words.extend(stop_words_nomes)
     
-    with open('numeros.txt', 'r') as f:
-        stop_words_numeros = f.readlines()
+    if removeragentes==True:
+        print('removeragentes ')
+        with open('agentes.txt', 'r') as f:
+            stop_words_agentes = f.readlines()
+            
+        stop_words_agentes = [x.strip() for x in stop_words_agentes]
+        stop_words.extend(stop_words_agentes)
     
-    top_words_numeros = [x.strip() for x in stop_words_numeros]
-    #stop_words.extend(stop_words_numeros)
+    if removernumeros==True:
+        print('removernumeros ')
+        with open('numeros.txt', 'r') as f:
+            stop_words_numeros = f.readlines()
+        
+        stop_words_numeros = [x.strip() for x in stop_words_numeros]
+        stop_words.extend(stop_words_numeros)
     
-    with open('subestacoes.txt', 'r') as f:
-        stop_words_subestacoes = f.readlines()
-    
-    stop_words_subestacoes = [x.strip() for x in stop_words_subestacoes]
-    stop_words.extend(stop_words_subestacoes)
+    if removersubestacoes==True:
+        print('removersubestacoes ')
+        with open('subestacoes.txt', 'r') as f:
+            stop_words_subestacoes = f.readlines()
+        
+        stop_words_subestacoes = [x.strip() for x in stop_words_subestacoes]
+        stop_words.extend(stop_words_subestacoes)
     
     stop_words = removePlural(stop_words)
     stop_words = removeRepetidos(stop_words)
     stop_words = removeInho(stop_words)
+    print('\n')
     return stop_words
     
 def processamentoTexto(text, stop_words):
@@ -144,7 +154,7 @@ list_docs=[]
 list_labels=[]
 doc_words=[]
 # prepara lista de stop words
-stop_words = getStopWords()
+stop_words = getStopWords(removernomes=True, removeragentes=True, removernumeros=True, removersubestacoes=False)
 for row in tqdm(list(new_file)):
     limpo = processamentoTexto(row[4], stop_words)
     doc_words.append([row[0], row[1], row[2], row[3], limpo])

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from wordcloud import WordCloud
 
-new_file = csv.reader(open('input/Pasta1.csv', 'r'),delimiter='_')
+new_file = csv.reader(open('input/transcricoes_tratadas.csv', 'r'),delimiter='_')
 cont_h = np.zeros(24)
 cont_d = np.zeros(35)
 alltext = ""
