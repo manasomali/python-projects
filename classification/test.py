@@ -1,295 +1,334 @@
-# Author: Peter Prettenhofer <peter.prettenhofer@gmail.com>
-#         Olivier Grisel <olivier.grisel@ensta.org>
-#         Mathieu Blondel <mathieu@mblondel.org>
-#         Lars Buitinck
-# License: BSD 3 clause
-import logging
-import numpy as np
-from optparse import OptionParser
-import sys
-from time import time
-import matplotlib.pyplot as plt
-
-from sklearn.datasets import fetch_20newsgroups
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.feature_extraction.text import HashingVectorizer
-from sklearn.feature_selection import SelectFromModel
-from sklearn.feature_selection import SelectKBest, chi2
-from sklearn.linear_model import RidgeClassifier
 from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import ComplementNB
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import SGDClassifier
-from sklearn.linear_model import Perceptron
-from sklearn.linear_model import PassiveAggressiveClassifier
-from sklearn.naive_bayes import BernoulliNB, ComplementNB, MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neighbors import NearestCentroid
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.utils.extmath import density
-from sklearn import metrics
-
+from sklearn.model_selection import train_test_split
 import csv
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
+from prettytable import PrettyTable
+from sklearn import metrics
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import learning_curve
+from sklearn.metrics import f1_score
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+
+def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
+                        n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
+
+    train_sizes, train_scores, test_scores, fit_times, _ = \
+        learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
+                       train_sizes=train_sizes,
+                       return_times=True)
+    train_scores_mean = np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+    fit_times_mean = np.mean(fit_times, axis=1)
+    fit_times_std = np.std(fit_times, axis=1)
+
+    print("\n")
+    t = PrettyTable(['Scores','Values'])
+    t.add_row(['train_scores_mean', train_scores_mean])
+    t.add_row(['train_scores_std', train_scores_std])
+    t.add_row(['test_scores_mean', test_scores_mean])
+    t.add_row(['test_scores_std', test_scores_std])
+    print(t)
+
+    # Plot learning curve
+    fig0, axes0 = plt.subplots(dpi=300)
+    axes0.grid()
+    axes0.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                         train_scores_mean + train_scores_std, alpha=0.1,
+                         color="r")
+    axes0.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                         test_scores_mean + test_scores_std, alpha=0.1,
+                         color="g")
+    axes0.plot(train_sizes, train_scores_mean, 'o-', color="r",linestyle='dashed',
+                 label="Training score")
+    axes0.plot(train_sizes, test_scores_mean, 'o-', color="g",
+                 label="Cross-validation score")
+    axes0.legend(loc="best")
+    axes0.set_xlabel("Training examples")
+    axes0.set_ylabel("Score")
+    plt.savefig('plot1.png', dpi=300, format='png')
+    
+    # Plot n_samples vs fit_times
+    fig1, axes1 = plt.subplots(dpi=300)
+    axes1.grid()
+    axes1.plot(train_sizes, fit_times_mean, 'o-')
+    axes1.fill_between(train_sizes, fit_times_mean - fit_times_std,
+                         fit_times_mean + fit_times_std, alpha=0.1)
+    axes1.set_xlabel("Training examples")
+    axes1.set_ylabel("fit_times")
+    axes1.set_title("Scalability of the model")
+    plt.savefig('plot2.png', dpi=300, format='png')
+    
+    # Plot fit_time vs score
+    fig2, axes2 = plt.subplots(dpi=300)
+    axes2.grid()
+    axes2.plot(fit_times_mean, test_scores_mean, 'o-')
+    axes2.fill_between(fit_times_mean, test_scores_mean - test_scores_std,
+                         test_scores_mean + test_scores_std, alpha=0.1)
+    axes2.set_xlabel("fit_times")
+    axes2.set_ylabel("Score")
+    axes2.set_title("Performance of the model")
+    plt.savefig('plot3.png', dpi=300, format='png')
+    
+    return [train_sizes, train_scores_mean, train_scores_std, test_scores_mean, test_scores_std]
+    
 
 
-# Display progress logs on stdout
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s %(message)s')
+def get_top_n_words(corpus, n=None):
+    """
+    List the top n words in a vocabulary according to occurrence in a text corpus.
+    
+    get_top_n_words(["I love Python", "Python is a language programming", "Hello world", "I love the world"]) -> 
+    [('python', 2),
+     ('world', 2),
+     ('love', 2),
+     ('hello', 1),
+     ('is', 1),
+     ('programming', 1),
+     ('the', 1),
+     ('language', 1)]
+    """
+    vec = CountVectorizer().fit(corpus)
+    bag_of_words = vec.transform(corpus)
+    sum_words = bag_of_words.sum(axis=0) 
+    words_freq = [(word, sum_words[0, idx]) for word, idx in     vec.vocabulary_.items()]
+    words_freq =sorted(words_freq, key = lambda x: x[1], reverse=True)
+    return words_freq[:n]
 
-op = OptionParser()
-op.add_option("--report",
-              action="store_true", dest="print_report",
-              help="Print a detailed classification report.")
-op.add_option("--chi2_select",
-              action="store", type="int", dest="select_chi2",
-              help="Select some number of features using a chi-squared test")
-op.add_option("--confusion_matrix",
-              action="store_true", dest="print_cm",
-              help="Print the confusion matrix.")
-op.add_option("--top10",
-              action="store_true", dest="print_top10",
-              help="Print ten most discriminative terms per class"
-                   " for every classifier.")
-op.add_option("--all_categories",
-              action="store_true", dest="all_categories",
-              help="Whether to use all categories or not.")
-op.add_option("--use_hashing",
-              action="store_false",
-              help="Use a hashing vectorizer.")
-op.add_option("--n_features",
-              action="store", type=int, default=2 ** 16,
-              help="n_features when using the hashing vectorizer.")
-op.add_option("--filtered",
-              action="store_true",
-              help="Remove newsgroup information that is easily overfit: "
-                   "headers, signatures, and quoting.")
+categories = ['carga',
+'comprovacao de disponibilidade',
+'controle de geracao',
+'controle de tensao',
+'controle de transmissao',
+'conversora',
+'falha de supervisao',
+'hidrologia',
+'horario',
+'sem informacao',
+'sgi',
+'teste de comunicacao']
+categories_acertos = {'controle de tensao':0,
+            'controle de geracao':0,
+            'conversora':0,
+            'teste de comunicacao':0,
+            'sgi':0,
+            'controle de transmissao':0,
+            'hidrologia':0,
+            'horario':0,
+            'carga':0,
+            'sem informacao':0,
+            'falha de supervisao':0,
+            'comprovacao de disponibilidade':0}
+categories_erros = {'controle de tensao':0,
+            'controle de geracao':0,
+            'conversora':0,
+            'teste de comunicacao':0,
+            'sgi':0,
+            'controle de transmissao':0,
+            'hidrologia':0,
+            'horario':0,
+            'carga':0,
+            'sem informacao':0,
+            'falha de supervisao':0,
+            'comprovacao de disponibilidade':0}
+categories_conut_train = {'controle de tensao':0,
+            'controle de geracao':0,
+            'conversora':0,
+            'teste de comunicacao':0,
+            'sgi':0,
+            'controle de transmissao':0,
+            'hidrologia':0,
+            'horario':0,
+            'carga':0,
+            'sem informacao':0,
+            'falha de supervisao':0,
+            'comprovacao de disponibilidade':0}
+categories_conut_test = {'controle de tensao':0,
+            'controle de geracao':0,
+            'conversora':0,
+            'teste de comunicacao':0,
+            'sgi':0,
+            'controle de transmissao':0,
+            'hidrologia':0,
+            'horario':0,
+            'carga':0,
+            'sem informacao':0,
+            'falha de supervisao':0,
+            'comprovacao de disponibilidade':0}
 
-
-def is_interactive():
-    return not hasattr(sys.modules['__main__'], '__file__')
-
-
-# work-around for Jupyter notebook and IPython console
-argv = [] if is_interactive() else sys.argv[1:]
-(opts, args) = op.parse_args(argv)
-if len(args) > 0:
-    op.error("this script takes no arguments.")
-    sys.exit(1)
-
-print(__doc__)
-op.print_help()
-print()
-
-
-categories = ['controle de tensao',
-        'controle de geracao',
-        'conversora',
-        'teste de comunicacao',
-        'sgi',
-        'controle de transmissao',
-        'hidrologia',
-        'horario',
-        'carga',
-        'sem informacao',
-        'falha de supervisao',
-        'comprovacao de disponibilidade'
-]
-
-print("Loading dataset:")
-new_file = csv.reader(open('input/dataset_1500_3.csv', 'r', encoding='utf-8'),delimiter='_')
+new_file = csv.reader(open('input/dataset_1500_1.csv', 'r', encoding='utf-8'),delimiter='_')
 list_docs=[]
 list_labels=[]
 for row in tqdm(list(new_file)):
     list_docs.append(row[0])
     list_labels.append(row[1])
+print("\n")
+print("Divisão Dataset Treino/Teste:")
+choose_dataset=input("1 - Aleatorio\n2 - Controlado\n3 - Plots Learning Curve\n-> ")
+X_train = []
+X_test = []
+y_train = []
+y_test = []
+if (choose_dataset==str(1))or(choose_dataset==str(3)):
+    # divisão em treio e teste aleatório
+    split=input("Porcentagem para teste (0 a 1): ")
+    #split=0.2
+    X_train, X_test, y_train, y_test = train_test_split(list_docs, list_labels, test_size=float(split))
+if choose_dataset==str(2):
+    # divisão em treio e teste controlada
+    split=input("Máximo de docs para treino e teste: ")
+    for (doc, label) in zip(list_docs, list_labels):
+        if categories_conut_train[label]<int(split):
+            X_train.append(doc)
+            y_train.append(label)
+            categories_conut_train[label]+=1
+        if ((categories_conut_test[label]<int(split))and(categories_conut_train[label]>=int(split))):
+            X_test.append(doc)
+            y_test.append(label)
+            categories_conut_test[label]+=1
+    
+choose=input("1 - MultinomialNB \n1.1 - ComplementNB\n2 - SVC \n2.1 - LinearSVC\n3 - SGDClassifier\n-> ")
+tfidf_vec=TfidfVectorizer(ngram_range=(1, 2))
+if choose==str(1):
+    if choose_dataset==str(3):
+        X = tfidf_vec.fit_transform(list_docs)
+        y = list_labels
+        cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        dados=plot_learning_curve(MultinomialNB(alpha=0.01), "Learning Curves MultinomialNB", X, y, cv=cv, n_jobs=4)
+      
+    # treinando modelo
+    pipeline = Pipeline([('vect', tfidf_vec), 
+                          ('clf', MultinomialNB(alpha=0.1) )])
+    pipeline.fit(list(X_train), list(y_train))
+    # predicao
+    predicted = pipeline.predict(list(X_test))
 
-data_train, data_test, y_train, y_test = train_test_split(list_docs, list_labels, test_size=0.2)
+if choose==str(2.1):
+    if choose_dataset==str(3):
+        X = tfidf_vec.fit_transform(list_docs)
+        y = list_labels
+        cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        dados=plot_learning_curve(LinearSVC(penalty='l1', dual=False), "Learning Curves", X, y, cv=cv, n_jobs=4)
+    # treinando modelo
+    pipeline = Pipeline([('vect', tfidf_vec), 
+                          ('clf', LinearSVC(penalty='l1', dual=False)) ])
+    pipeline.fit(list(X_train), list(y_train))
+    # predicao
+    predicted = pipeline.predict(list(X_test))
 
-print('data loaded')
+if choose==str(2):
+    if choose_dataset==str(3):
+        X = tfidf_vec.fit_transform(list_docs)
+        y = list_labels
+        cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        dados=plot_learning_curve(SVC(kernel='linear', tol=1e-5), "Learning Curves", X, y, cv=cv, n_jobs=4)
+    # treinando modelo
+    pipeline = Pipeline([('vect', tfidf_vec), 
+                          ('clf', SVC(kernel='linear', tol=1e-5)) ])
+    pipeline.fit(list(X_train), list(y_train))
+    # predicao
+    predicted = pipeline.predict(list(X_test))
 
-# order of labels in `target_names` can be different from `categories`
-target_names = categories
+if choose==str(3):
+    if choose_dataset==str(3):
+        X = tfidf_vec.fit_transform(list_docs)
+        y = list_labels
+        cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        dados=plot_learning_curve(SGDClassifier(loss='hinge', penalty='l1', max_iter=50, tol=1e-5, shuffle=False), "Learning Curves", X, y, cv=cv, n_jobs=4)
+    # treinando modelo
+    pipeline = Pipeline([('vect', tfidf_vec),
+                          ('clf', SGDClassifier(loss='hinge', penalty='l1', max_iter=50, tol=1e-5, shuffle=False)) ])
+    pipeline.fit(list(X_train), list(y_train))
+    # predicao
+    predicted = pipeline.predict(list(X_test))
 
+if choose==str(1.1):
+    if choose_dataset==str(3):
+        X = tfidf_vec.fit_transform(list_docs)
+        y = list_labels
+        cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        dados=plot_learning_curve(ComplementNB(alpha=0.1), "Learning Curves", X, y, cv=cv, n_jobs=4)
 
-def size_mb(docs):
-    return sum(len(s.encode('utf-8')) for s in docs) / 1e6
+    # treinando modelo
+    pipeline = Pipeline([('vect', tfidf_vec), 
+                          ('clf', ComplementNB(alpha=0.1) )])
+    pipeline.fit(list(X_train), list(y_train))
+    # predicao
+    predicted = pipeline.predict(list(X_test))
+    
+if choose==str(5):
+    pipeline = Pipeline([('vect', tfidf_vec), 
+                          ('clf', KNeighborsClassifier(n_neighbors=5) )])
+    pipeline.fit(list(X_train), list(y_train))
+    # predicao
+    predicted = pipeline.predict(list(X_test))
+    predicted_proba = pipeline.predict_proba(list(X_test))
+    for i in range(len(predicted_proba)):
+        for j in range(len(predicted_proba[i])):
+            print(str(i) +","+ str(j), end=' -> ')
+            print(predicted_proba[i][j], end='\n')
+        
+    
+acertos = 0
+erros = 0
+for (predic,correto) in zip(predicted,y_test):
+    if predic==correto:
+        acertos+=1
+        categories_acertos[predic]+=1
+    else:
+        erros+=1
+        categories_erros[predic]+=1
 
-
-data_train_size_mb = size_mb(data_train)
-data_test_size_mb = size_mb(data_test)
-
-print("%d documents - %0.3fMB (training set)" % (
-    len(data_train), data_train_size_mb))
-print("%d documents - %0.3fMB (test set)" % (
-    len(data_test), data_test_size_mb))
-print("%d categories" % len(target_names))
-print()
-
-
-print("Extracting features from the training data using a sparse vectorizer")
-t0 = time()
-# use HashingVectorizer?
-if False:
-    vectorizer = HashingVectorizer()
-    X_train = vectorizer.transform(data_train)
-else:
-    vectorizer = TfidfVectorizer(sublinear_tf=True, max_df=0.5, ngram_range=(1, 2))
-    X_train = vectorizer.fit_transform(data_train)
-duration = time() - t0
-print("done in %fs at %0.3fMB/s" % (duration, data_train_size_mb / duration))
-print("n_samples: %d, n_features: %d" % X_train.shape)
-print()
-
-print("Extracting features from the test data using the same vectorizer")
-t0 = time()
-X_test = vectorizer.transform(data_test)
-duration = time() - t0
-print("done in %fs at %0.3fMB/s" % (duration, data_test_size_mb / duration))
-print("n_samples: %d, n_features: %d" % X_test.shape)
-print()
-
-# mapping from integer feature name to original token string
-feature_names = vectorizer.get_feature_names()
-
-# use SelectKBest?
-if False:
-    print("Extracting %d best features by a chi-squared test" %
-          opts.select_chi2)
-    t0 = time()
-    ch2 = SelectKBest(chi2, k=opts.select_chi2)
-    X_train = ch2.fit_transform(X_train, y_train)
-    X_test = ch2.transform(X_test)
-    if feature_names:
-        # keep selected feature names
-        feature_names = [feature_names[i] for i
-                         in ch2.get_support(indices=True)]
-    print("done in %fs" % (time() - t0))
-    print()
-
-if feature_names:
-    feature_names = np.asarray(feature_names)
-
-
-def trim(s):
-    """Trim string to fit on terminal (assuming 80-column display)"""
-    return s if len(s) <= 80 else s[:77] + "..."
-
-def benchmark(clf):
-    print('_' * 80)
-    print("Training: ")
-    print(clf)
-    t0 = time()
-    clf.fit(X_train, y_train)
-    train_time = time() - t0
-    if False:
-        print("train time: %0.3fs" % train_time)
-
-    t0 = time()
-    pred = clf.predict(X_test)
-    test_time = time() - t0
-    if False:
-        print("test time:  %0.3fs" % test_time)
-
-    score = metrics.accuracy_score(y_test, pred)
-    if True:
-        print("accuracy:   %0.3f" % score)
-
-    if hasattr(clf, 'coef_'):
-        print("dimensionality: %d" % clf.coef_.shape[1])
-        print("density: %f" % density(clf.coef_))
-
-        if True and feature_names is not None:
-            print("top 10 keywords per class:")
-            for i, label in enumerate(target_names):
-                top10 = np.argsort(clf.coef_[i])[-10:]
-                print(trim("%s: %s" % (label, " ".join(feature_names[top10]))))
-        print()
-
-    if False:
-        print("classification report:")
-        print(metrics.classification_report(y_test, pred))
-
-    if False:
-        print("confusion matrix:")
-        print(metrics.confusion_matrix(y_test, pred))
-
-    print()
-    clf_descr = str(clf).split('(')[0]
-    return clf_descr, score, train_time, test_time
+if True:
+    print("\n")
+    t = PrettyTable(['Erros', 'Acertos', 'Mean Accuracy'])
+    t.add_row([str(erros), str(acertos),"{:.3f}".format(pipeline.score(list(X_test), list(y_test)))])
+    print(t)
+    
+    t = PrettyTable(['Categoria', 'Acertos', 'Erros', 'Percentual'])
+    for cat in categories:
+        t.add_row([cat, str(categories_acertos[cat]), str(categories_erros[cat]),"{:.3f}".format((categories_acertos[cat])/(categories_erros[cat]+categories_acertos[cat]))])
+    
+    print(t)
 
 
-results = []
-for clf, name in (
-        (RidgeClassifier(tol=1e-2, solver="sag"), "Ridge Classifier"),
-        (Perceptron(max_iter=50), "Perceptron"),
-        (PassiveAggressiveClassifier(max_iter=50),
-         "Passive-Aggressive"),
-        (KNeighborsClassifier(n_neighbors=10), "kNN"),
-        (RandomForestClassifier(), "Random forest")):
-    print('=' * 80)
-    print(name)
-    results.append(benchmark(clf))
+with open("output/resultado.csv", "w") as txt_file:
+    for (doc,predic,correto) in zip(X_test,predicted,y_test):
+        txt_file.write(str(doc) + "_" + str(predic) + "_" + str(correto) + "\n")
 
-for penalty in ["l2", "l1"]:
-    print('=' * 80)
-    print("%s penalty" % penalty.upper())
-    # Train Liblinear model
-    results.append(benchmark(LinearSVC(penalty=penalty, dual=False,
-                                       tol=1e-3)))
+if True:    
+    print("\n")        
+    print("classification report:")
+    print(metrics.classification_report(y_test, predicted,target_names=categories,digits=3))
 
-    # Train SGD model
-    results.append(benchmark(SGDClassifier(alpha=.0001, max_iter=50,
-                                           penalty=penalty)))
+if True:
+    feature_names = np.asarray(tfidf_vec.get_feature_names())
+    print(get_top_n_words(feature_names,10))
 
-# Train SGD with Elastic Net penalty
-print('=' * 80)
-print("Elastic-Net penalty")
-results.append(benchmark(SGDClassifier(alpha=.0001, max_iter=50,
-                                       penalty="elasticnet")))
+if True:
+    feature_names = np.asarray(tfidf_vec.get_feature_names())
+    print("top 10 keywords per class:")
+    for i, label in enumerate(categories):
+        top10 = np.argsort(pipeline['clf'].coef_[i])[-10:]
+        print("%s: %s" % (label, " ".join(feature_names[top10])))
 
-# Train NearestCentroid without threshold
-print('=' * 80)
-print("NearestCentroid (aka Rocchio classifier)")
-results.append(benchmark(NearestCentroid()))
-
-# Train sparse Naive Bayes classifiers
-print('=' * 80)
-print("Naive Bayes")
-results.append(benchmark(MultinomialNB(alpha=.01)))
-results.append(benchmark(BernoulliNB(alpha=.01)))
-results.append(benchmark(ComplementNB(alpha=.1)))
-
-print('=' * 80)
-print("LinearSVC with L1-based feature selection")
-# The smaller C, the stronger the regularization.
-# The more regularization, the more sparsity.
-results.append(benchmark(Pipeline([
-  ('feature_selection', SelectFromModel(LinearSVC(penalty="l1", dual=False,
-                                                  tol=1e-3))),
-  ('classification', LinearSVC(penalty="l2"))])))
-
-indices = np.arange(len(results))
-
-results = [[x[i] for x in results] for i in range(4)]
-
-clf_names, score, training_time, test_time = results
-training_time = np.array(training_time) / np.max(training_time)
-test_time = np.array(test_time) / np.max(test_time)
-
-plt.figure(figsize=(12, 8))
-plt.title("Score")
-plt.barh(indices, score, .2, label="score", color='navy')
-plt.barh(indices + .3, training_time, .2, label="training time",
-         color='c')
-plt.barh(indices + .6, test_time, .2, label="test time", color='darkorange')
-plt.yticks(())
-plt.legend(loc='best')
-plt.subplots_adjust(left=.25)
-plt.subplots_adjust(top=.95)
-plt.subplots_adjust(bottom=.05)
-
-for i, c in zip(indices, clf_names):
-    plt.text(-.3, i, c)
-
-plt.show()
+import seaborn as sns
+import pandas as pd
+cm =confusion_matrix(y_test, predicted)  
+index = categories
+columns = categories
+cm_df = pd.DataFrame(cm,columns,index)                      
+plt.figure(figsize=(10,6))  
+sns.heatmap(cm_df, annot=True)
+plt.savefig('plot4.png', dpi=300, format='png')
