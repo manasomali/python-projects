@@ -4,11 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from wordcloud import WordCloud
 
-new_file = csv.reader(open('input/transcricoes_tratadas.csv', 'r'),delimiter='_')
+new_file = csv.reader(open('input/dataset_original.csv', 'r'),delimiter='_')
 cont_h = np.zeros(24)
 cont_d = np.zeros(35)
 alltext = ""
+duracao = []
 for row in tqdm(list(new_file)):
+    duracao.append(float(row[4]))
     dia = row[1]
     hora = row[2][0:2]
     if "20200101" == dia:
@@ -131,7 +133,7 @@ for row in tqdm(list(new_file)):
     if "23" == hora:
         cont_h[23]+=1
 
-    alltext = alltext + " " + row[4]
+#    alltext = alltext + " " + row[4]
 
 plt.figure()
 obj1 = ("00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23")
@@ -139,6 +141,8 @@ y = np.arange(len(obj1))
 x = cont_h
 plt.bar(y,x)
 plt.xticks(np.arange(len(obj1)),obj1,rotation=20)
+plt.axhline(y=x.mean(), color='k', linestyle='dashed', linewidth=1)
+plt.text(0, x.mean(),'Mean: {:.0f}'.format(x.mean()))
 plt.title("Histograma de ligações em relação as horas do dia")
 plt.ylabel("Quantidade de Ligações")
 plt.xlabel("Hora")
@@ -149,11 +153,13 @@ y = np.arange(len(obj2))
 x = cont_d
 plt.bar(y,x)
 plt.xticks(np.arange(len(obj2)),obj2,rotation=90)
+plt.axhline(y=x.mean(), color='k', linestyle='dashed', linewidth=1)
+plt.text(0, x.mean(),'Mean: {:.0f}'.format(x.mean()))
 plt.title("Histograma de ligações em relação aos dias")
 plt.xlabel("Dia")
 plt.ylabel("Quantidade de Ligações")
 
-
+alltext="reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) reduz(24) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) horario(39) deslig(39) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) maquin(50) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12) tensao(12) conversor(12)  usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) usina(15) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) mega(18) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) geracao(22) compensador(9) compensador(9) compensador(9) compensador(9) compensador(9) compensador(9) compensador(9) compensador(9) compensador(9) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10) barra(10) milimetro(10)  intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) intervencao(11) potencia(11) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) chuva(17) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21) mw(21) sgi(21)  compensa(4) vazao(4) watt(4) compensa(4) vazao(4) watt(4) compensa(4) vazao(4) watt(4) compensa(4) vazao(4) watt(4) manobr(6) reservatorio(6) manobr(6) reservatorio(6) manobr(6) reservatorio(6) manobr(6) reservatorio(6) manobr(6) reservatorio(6) manobr(6) reservatorio(6)  montante(3) montante(3) montante(3) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) disjuntor(16) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) kv(19) gerar(5) gerar(5) gerar(5) gerar(5) gerar(5) documento(2) prorrog(2) vertimento(2) documento(2) prorrog(2) vertimento(2) metro(7) metro(7) metro(7) metro(7) metro(7) metro(7) metro(7) elev(8) elev(8) elev(8) elev(8) elev(8) elev(8) elev(8) elev(8) nivel(8) nivel(8) nivel(8) nivel(8) nivel(8) nivel(8) nivel(8) nivel(8)"
 for color in ['Dark2', 'prism']:
     wordcloud = WordCloud(max_font_size=25, 
                           background_color='white',
@@ -163,5 +169,35 @@ for color in ['Dark2', 'prism']:
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis("off")
     plt.savefig(str(color)+'.png', dpi=300, facecolor='w', edgecolor='w',
-        orientation='landscape', format='png')
+       orientation='landscape', format='png')
     plt.show()
+    
+
+passos_dur=np.zeros(6)
+for dur in duracao:
+    if dur>0 and dur<=10:
+        passos_dur[0]+=1
+    elif dur>10 and dur<=20:
+        passos_dur[1]+=1
+    elif dur>20 and dur<=30:
+        passos_dur[2]+=1
+    elif dur>30 and dur<=40:
+        passos_dur[3]+=1
+    elif dur>40 and dur<=50:
+        passos_dur[4]+=1
+    else:
+        passos_dur[5]+=1
+        
+plt.figure()
+obj = ("[0,10]","]10,20]","]20,30]","]30,40]","]40,50]",">50")
+y = np.arange(len(obj))
+x = passos_dur
+plt.bar(y,x)
+plt.xticks(np.arange(len(obj)),obj,rotation=90)
+plt.axhline(y=x.mean(), color='k', linestyle='dashed', linewidth=1)
+plt.text(0, x.mean(),'Mean: {:.0f}'.format(x.mean()))
+plt.title("Histograma da duração das ligações")
+plt.xlabel("Faixa (s)")
+plt.ylabel("Quantidade de Ligações")
+
+print(sum(duracao) / len(duracao))

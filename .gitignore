@@ -130,25 +130,23 @@ dmypy.json
 .pyre/
 
 # Pessoal
-transcricao-audios/*.env
-dataset/*
 transcricoes_vosk.csv
 transcricoes_wit.csv
 agrupa-transcricoes/input/*
 agrupa-transcricoes/output/*
 analise-textos/input/*
+analise-textos/output/*
 classification/input/*
 classification/output/*
 classification/docs/*
 classification/models/*
-tensorflow-classification/input/*
-tensorflow-classification/output/*
+classification/imgs/*
 clustering/input/*
 clustering/output/*
-split-dataset/input/*
-split-dataset/output/*
 corrige-nome-audios/input/*
 corrige-nome-audios/output/*
+dataset/*
+plotagem-audios/input/*
 processamento-textos/input/*
 processamento-textos/output/*
 redutor-audio/input/*
@@ -157,11 +155,17 @@ removedor-silencio/input/*
 removedor-silencio/output/*
 separador-audios/input/*
 separador-audios/output/*
+split-dataset/input/*
+split-dataset/output/*
+tensorflow-classification/input/*
+tensorflow-classification/output/*
+transcricao-audios/*.env
 transcricao-audios/input/*
 transcricao-audios/output/*
 !agrupa-transcricoes/input/.gitkeep
 !agrupa-transcricoes/output/.gitkeep
 !analise-textos/input/.gitkeep
+!analise-textos/output/.gitkeep
 !classification/input/.gitkeep
 !classification/output/.gitkeep
 !classification/docs/.gitkeep
@@ -184,3 +188,4 @@ transcricao-audios/output/*
 !tensorflow-classification/output/.gitkeep
 !split-dataset/input/.gitkeep
 !split-dataset/output/.gitkeep
+!plotagem-audios/input/.gitkeep

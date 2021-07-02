@@ -1,6 +1,5 @@
 import csv
 import re
-import nltk
 import string
 import unicodedata
 from tqdm import tqdm
@@ -154,13 +153,13 @@ list_docs=[]
 list_labels=[]
 doc_words=[]
 # prepara lista de stop words
-stop_words = getStopWords(removernomes=True, removeragentes=True, removernumeros=True, removersubestacoes=False)
+stop_words = getStopWords(removernomes=True, removeragentes=True, removernumeros=False, removersubestacoes=True)
 for row in tqdm(list(new_file)):
     limpo = processamentoTexto(row[4], stop_words)
     doc_words.append([row[0], row[1], row[2], row[3], limpo])
     list_docs.append(limpo)
 
-with open("output/transcricoes_tratadas.csv", "w") as txt_file:
+with open("output/transcricoes_comnum_semsubes.csv", "w") as txt_file:
     for line in tqdm(doc_words):
         txt_file.write(str(line[0])+"_"+str(line[1])+"_"+str(line[2])+"_"+str(line[3])+"_"+str(line[4])+"\n")
 
@@ -172,6 +171,6 @@ for line in tqdm(doc_words):
         palavras.append([str(line[0])+"_"+str(line[1])+"_"+str(line[2])+"_"+str(line[3])+"_"+str(cont),word])
         cont+=1
 
-with open("output/transcricoes_palavras.csv", "w") as txt_file:
+with open("output/transcricoes_palavras_comnum_semsubes.csv", "w") as txt_file:
     for word in tqdm(palavras):
         txt_file.write(str(word[0])+"_"+str(word[1])+"\n")
