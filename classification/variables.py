@@ -11,7 +11,7 @@ vecclassesnamespt=[
                     'hidrologia',
                     'horario',
                     'sem informacao',
-                    'sgi',
+                    'intervencao',
                     'teste de comunicacao'
                 ]
 

@@ -34,7 +34,11 @@ for nome_audio in nomes_audios:
 names_file_saved = []
 for nome_audio in nomes_audios:
     cont=0
-    audio_regioes = split(path.join(inputdirectory, nome_audio))
+    audio_regioes = split(path.join(inputdirectory, nome_audio),
+        min_dur=0.1,     # minimum duration of a valid audio event in seconds
+        max_dur=20,       # maximum duration of an event
+        max_silence=0.2 # maximum duration of tolerated continuous silence within an event
+    )
     os.makedirs(path.join(outputdirectory,nome_audio.replace('.wav', '')), exist_ok=True)
     for region in audio_regioes:
         region.save(path.join(outputdirectory,nome_audio.replace('.wav', ''))+'/'+nome_audio.replace('.wav', '_')+str(cont)+".wav")

@@ -12,6 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
+from sklearn.model_selection import GridSearchCV
 import csv
 from tqdm import tqdm
 import numpy as np
@@ -19,12 +20,18 @@ import pickle
 import pandas as pd
 from time import time
 from tpot import TPOTClassifier
-
+import os
 import variables
 from utils import reportEvaluation
 from utils import compileModels
 from utils import setupTraining
 
+import winsound
+from sklearn.feature_selection import SelectPercentile, f_classif
+from sklearn.feature_selection import SelectKBest, chi2
+
+from skopt.space import Real, Categorical, Integer
+from skopt import BayesSearchCV
 
 
 new_file = csv.reader(open('input/transcricoes_comnum_comsubes.csv', 'r', encoding='utf-8'),delimiter='_')
@@ -43,56 +50,102 @@ split=0.2
 X_train, X_test, y_train, y_test = train_test_split(list_docs, list_labels, test_size=float(split), random_state = 42, shuffle=True, stratify=list_labels)
 skf = StratifiedKFold(n_splits = 5, shuffle = False)
 
-choose=input("-1 - Usar modelos já treinados\n0 - Todos \n2 - ComplementNB \n3 - LinearSVC\n4 - SGDClassifier\n5 - KNeighborsClassifier\n6 - MLPClassifier\n7 - RandomForestClassifier\n8 - TPOT\n-> ")
+choose=input("-1 - Usar modelos já treinados\n0 - Todos \n2 - ComplementNB \n3 - LinearSVC\n4 - SGDClassifier\n5 - KNeighborsClassifier\n6 - MLPClassifier\n7 - RandomForestClassifier\n8 - RandomForestClassifierOpt\n9 - TPOT\n-> ")
 
+if (choose==str(1))or(choose==str(0)):
+    print("Corpus")
+    count_vectorizer = CountVectorizer(ngram_range=(1,1))
+    doc_vec = count_vectorizer.fit_transform(list_docs)
+    print('ngram_range=(1,1):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,2))
+    doc_vec = count_vectorizer.fit_transform(list_docs)
+    print('ngram_range=(1,2):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,3))
+    doc_vec = count_vectorizer.fit_transform(list_docs)
+    print('ngram_range=(1,3):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,4))
+    doc_vec = count_vectorizer.fit_transform(list_docs)
+    print('ngram_range=(1,4):'+str(doc_vec.shape))
+    print("Train")
+    count_vectorizer = CountVectorizer(ngram_range=(1,1))
+    doc_vec = count_vectorizer.fit_transform(X_train)
+    print('ngram_range=(1,1):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,2))
+    doc_vec = count_vectorizer.fit_transform(X_train)
+    print('ngram_range=(1,2):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,3))
+    doc_vec = count_vectorizer.fit_transform(X_train)
+    print('ngram_range=(1,3):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,4))
+    doc_vec = count_vectorizer.fit_transform(X_train)
+    print('ngram_range=(1,4):'+str(doc_vec.shape))
+    print("Test")
+    count_vectorizer = CountVectorizer(ngram_range=(1,1))
+    doc_vec = count_vectorizer.fit_transform(X_test)
+    print('ngram_range=(1,1):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,2))
+    doc_vec = count_vectorizer.fit_transform(X_test)
+    print('ngram_range=(1,2):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,3))
+    doc_vec = count_vectorizer.fit_transform(X_test)
+    print('ngram_range=(1,3):'+str(doc_vec.shape))
+    count_vectorizer = CountVectorizer(ngram_range=(1,4))
+    doc_vec = count_vectorizer.fit_transform(X_test)
+    print('ngram_range=(1,4):'+str(doc_vec.shape))
+    
 if (choose==str(2))or(choose==str(0)):
     print("\nComplementNB")
     pipeline = Pipeline([('vect', CountVectorizer()),
                          ('tfidf', TfidfTransformer()),
                           ('clf', ComplementNB() )])
-    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
-                  'vect__binary': [True, False],
+    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3),(1, 4)],
+                  'vect__binary': [True],
                   'vect__max_features': [1000, 2000, 3000],
-               'tfidf__use_idf': [True, False],
-               'tfidf__norm': ['l1', 'l2'],
-               'tfidf__smooth_idf': [True, False],
-               'tfidf__sublinear_tf': [True, False],
+               'tfidf__use_idf': [False],
+               'tfidf__norm': ['l2'],
+               'tfidf__smooth_idf': [True],
+               'tfidf__sublinear_tf': [True],
                'clf__alpha': [0.1,0.5,1],
                'clf__fit_prior': [True],
                'clf__norm': [False]}
     
-    ComplementNB = setupTraining(pipeline=pipeline,
+    SetupComplementNB = setupTraining(pipeline=pipeline,
                                  X_train=X_train,
                                  X_test=X_test,
                                  y_train=y_train,
                                  y_test=y_test,
                                  titulo='ComplementNB')
     
-    model = ComplementNB.perform_gridsearchcv(searchparameters=parameters,
+    model = SetupComplementNB.perform_gridsearchcv(searchparameters=parameters,
                                       cv=skf,
-                                      scoring=['accuracy','f1_macro'],
-                                      refit='f1_macro')
+                                      scoring=['accuracy','f1_weighted'],
+                                      refit='f1_weighted')
     
-    ComplementNB.plot_learning_curve(x=list_docs, 
+    SetupComplementNB.plot_learning_curve(x=list_docs, 
                                      y=list_labels,
-                                     model=model, cv=skf)
-    ComplementNB.save_model(model=model)
+                                     model=model,
+                                     scoring='f1_weighted',
+                                     cv=skf)
+    SetupComplementNB.save_model(model=model)
     
     predicted = model.predict(list(X_test))
     
-    ComplementNB = reportEvaluation(
+    ReportComplementNB = reportEvaluation(
              clf=model, 
              X_test=X_test, 
              y_test=y_test, 
              predicted=predicted, 
              n_classes=12, 
              titulo='ComplementNB')
-         
-    ComplementNB.print_basic_metrics()
-    ComplementNB.print_classification_report()
-    ComplementNB.plot_error_matrix(labels=variables.vecclassesnamesen)
-    ComplementNB.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
-   
+    
+    ReportComplementNB.generate_gridsearch_results('clf__alpha', left_xlim=0.1, right_xlim=0.1, is_log=False)
+    ReportComplementNB.print_basic_metrics()
+    ReportComplementNB.print_classification_report()
+    #ReportComplementNB.plot_error_matrix(labels=variables.vecclassesnamesen)
+    ReportComplementNB.plot_error_matrix()
+    #ReportComplementNB.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
+    ReportComplementNB.plot_multiclass_roc()
+    ReportComplementNB.export_predictions()
         
 if (choose==str(3))or(choose==str(0)):
     print("\nLinearSVC")
@@ -100,42 +153,67 @@ if (choose==str(3))or(choose==str(0)):
                           ('tfidf', TfidfTransformer()),
                           ('clf', LinearSVC()) ])
     
-    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
-                  'vect__binary': [True, False],
+    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3),(1, 4)],
+                  'vect__binary': [True],
                   'vect__max_features': [1000, 2000, 3000],
                 'tfidf__use_idf': [True],
-                'tfidf__norm': ['l1', 'l2'],
+                'tfidf__norm': ['l2'],
                 'tfidf__smooth_idf': [True],
                 'tfidf__sublinear_tf': [True],
                 'clf__penalty': ['l2'],
                 'clf__loss': ['squared_hinge'],
-                'clf__dual': [True, False],
-                'clf__C': [0.001,0.01,0.1,1],
+                'clf__dual': [True],
+                'clf__C': [0.01,0.1,1],
                 'clf__multi_class': ['ovr'],
-                'clf__fit_intercept': [True, False],
+                'clf__fit_intercept': [True],
+                'clf__random_state': [42],
                 'clf__class_weight': ['balanced'],
-                'clf__max_iter': [10,500,1000]}
+                'clf__max_iter': [10]}
     
-    gs_clf = GridSearchCV(pipeline, parameters, cv=skf, n_jobs=-1, verbose=5)
+    SetupLinearSVC = setupTraining(pipeline=pipeline,
+                                 X_train=X_train,
+                                 X_test=X_test,
+                                 y_train=y_train,
+                                 y_test=y_test,
+                                 titulo='LinearSVC')
     
-    gs_clf = gs_clf.fit(list(X_train), list(y_train))
-    print(gs_clf.best_score_)
-    print(gs_clf.best_params_)
-    results = pd.DataFrame(gs_clf.cv_results_)
-    results.to_excel( r'E:\python-projects\classification\docs\LinearSVC.xlsx',sheet_name= 'LinearSVC')
-
-    predicted = gs_clf.predict(list(X_test))
-    print(confusion_matrix(list(y_test), predicted))
-    print(classification_report(y_test, predicted, digits=4))
-    with open('models\LinearSVC', 'wb') as picklefile:
-        pickle.dump(gs_clf,picklefile)
+    model = SetupLinearSVC.perform_gridsearchcv(searchparameters=parameters,
+                                      cv=skf,
+                                      scoring=['accuracy','f1_weighted'],
+                                      refit='f1_weighted')
     
+    SetupLinearSVC.plot_learning_curve(x=list_docs, 
+                                     y=list_labels,
+                                     model=model,
+                                     scoring='f1_weighted',
+                                     cv=skf)
+    SetupLinearSVC.save_model(model=model)
+    
+    predicted = model.predict(list(X_test))
+    
+    ReportLinearSVC = reportEvaluation(
+             clf=model, 
+             X_test=X_test, 
+             y_test=y_test, 
+             predicted=predicted, 
+             n_classes=12, 
+             titulo='LinearSVC')
+         
+    ReportLinearSVC.generate_gridsearch_results('clf__C', left_xlim=0.005, right_xlim=1, is_log=True)
+    ReportLinearSVC.print_basic_metrics()
+    ReportLinearSVC.print_classification_report()
+    #ReportLinearSVC.plot_error_matrix(labels=variables.vecclassesnamesen)
+    ReportLinearSVC.plot_error_matrix()
+    #ReportLinearSVC.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
+    ReportLinearSVC.plot_multiclass_roc()
+    ReportLinearSVC.export_predictions()
+   
 if (choose==str(4))or(choose==str(0)):
     print("\nSGDClassifier")
     pipeline = Pipeline([('vect', CountVectorizer()),
                           ('tfidf', TfidfTransformer()),
                           ('clf', SGDClassifier()) ])
-    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
+    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3),(1, 4)],
                   'vect__binary': [True],
                   'vect__max_features': [1000, 2000, 3000],
                 'tfidf__use_idf': [True],
@@ -143,7 +221,7 @@ if (choose==str(4))or(choose==str(0)):
                 'tfidf__smooth_idf': [False],
                 'tfidf__sublinear_tf': [False],
                 'clf__loss': ['log'],
-                'clf__penalty': ['l1','l2'],
+                'clf__penalty': ['l1'],
                 'clf__alpha': [0.00001,0.0001,0.001],
                 'clf__fit_intercept': [True],
                 'clf__max_iter': [5],
@@ -151,60 +229,113 @@ if (choose==str(4))or(choose==str(0)):
                 'clf__learning_rate': ['optimal'],
                 'clf__class_weight': ['balanced']}
     
-    gs_clf = GridSearchCV(pipeline, parameters, cv=skf, n_jobs=-1, verbose=5)
+    SetupSGDClassifier = setupTraining(pipeline=pipeline,
+                                 X_train=X_train,
+                                 X_test=X_test,
+                                 y_train=y_train,
+                                 y_test=y_test,
+                                 titulo='SGDClassifier')
     
-    gs_clf = gs_clf.fit(list(X_train), list(y_train))
-    print(gs_clf.best_score_)
-    print(gs_clf.best_params_)
-    results = pd.DataFrame(gs_clf.cv_results_)
-    results.to_excel( r'E:\python-projects\classification\docs\SGDClassifier.xlsx',sheet_name= 'SGDClassifier')
-
-    predicted = gs_clf.predict(list(X_test))
-    print(confusion_matrix(list(y_test), predicted))
-    print(classification_report(y_test, predicted, digits=4))
-    with open('models\SGDClassifier', 'wb') as picklefile:
-        pickle.dump(gs_clf,picklefile)
+    model = SetupSGDClassifier.perform_gridsearchcv(searchparameters=parameters,
+                                      cv=skf,
+                                      scoring=['accuracy','f1_weighted'],
+                                      refit='f1_weighted')
     
+    SetupSGDClassifier.plot_learning_curve(x=list_docs, 
+                                     y=list_labels,
+                                     model=model,
+                                     scoring='f1_weighted',
+                                     cv=skf)
+    SetupSGDClassifier.save_model(model=model)
+    
+    predicted = model.predict(list(X_test))
+    
+    ReportSGDClassifier = reportEvaluation(
+             clf=model, 
+             X_test=X_test, 
+             y_test=y_test, 
+             predicted=predicted, 
+             n_classes=12, 
+             titulo='SGDClassifier')
+    
+    ReportSGDClassifier.generate_gridsearch_results('clf__alpha', left_xlim=0.000005, right_xlim=0.001, is_log=True)
+    a=ReportSGDClassifier.print_basic_metrics()
+    ReportSGDClassifier.print_classification_report()
+    #ReportSGDClassifier.plot_error_matrix(labels=variables.vecclassesnamesen)
+    ReportSGDClassifier.plot_error_matrix()
+    #ReportSGDClassifier.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
+    ReportSGDClassifier.plot_multiclass_roc()
+    ReportSGDClassifier.export_predictions()
+   
 if (choose==str(5))or(choose==str(0)):
     print("\nKNeighborsClassifier")
     pipeline = Pipeline([('vect', CountVectorizer()),
                           ('tfidf', TfidfTransformer()),
                           ('clf', KNeighborsClassifier() )])
-    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
-                  'vect__binary': [True, False],
+    parameters = {'vect__ngram_range': [(1, 2),(1, 3),(1, 4)],
+                  'vect__binary': [True],
                   'vect__max_features': [1000, 2000, 3000],
-                'tfidf__use_idf': [True, False],
-                'tfidf__norm': ['l1','l2'],
-                'tfidf__smooth_idf': [True, False],
-                'tfidf__sublinear_tf': [True, False],
-                'clf__n_neighbors': [5,10,20,30,40],
-                'clf__weights': ['uniform','distance'],
-                'clf__p': [1,2],
+                'tfidf__use_idf': [False],
+                'tfidf__norm': ['l2'],
+                'tfidf__smooth_idf': [True],
+                'tfidf__sublinear_tf': [True],
+                'clf__n_neighbors': [5,10,15],
+                'clf__weights': ['distance'],
+                'clf__p': [2],
                 'clf__n_jobs': [-1]}
     
-    gs_clf = GridSearchCV(pipeline, parameters, cv=skf, n_jobs=-1, verbose=5)
+    SetupKNeighborsClassifier = setupTraining(pipeline=pipeline,
+                                 X_train=X_train,
+                                 X_test=X_test,
+                                 y_train=y_train,
+                                 y_test=y_test,
+                                 titulo='KNeighborsClassifier')
     
-    gs_clf = gs_clf.fit(list(X_train), list(y_train))
-    print(gs_clf.best_score_)
-    print(gs_clf.best_params_)
-    results = pd.DataFrame(gs_clf.cv_results_)
-    results.to_excel( r'E:\python-projects\classification\docs\KNeighborsClassifier.xlsx',sheet_name= 'KNeighborsClassifier')
-
-    predicted = gs_clf.predict(list(X_test))
-    print(confusion_matrix(list(y_test), predicted))
-    print(classification_report(y_test, predicted, digits=4))
-    with open('models\KNeighborsClassifier', 'wb') as picklefile:
-        pickle.dump(gs_clf,picklefile)
+    model = SetupKNeighborsClassifier.perform_gridsearchcv(searchparameters=parameters,
+                                      cv=skf,
+                                      scoring=['accuracy','f1_weighted'],
+                                      refit='f1_weighted')
     
-
+    SetupKNeighborsClassifier.plot_learning_curve(x=list_docs, 
+                                     y=list_labels,
+                                     model=model,
+                                     scoring='f1_weighted',
+                                     cv=skf)
+    SetupKNeighborsClassifier.save_model(model=model)
+    
+    predicted = model.predict(list(X_test))
+    
+    ReportKNeighborsClassifier = reportEvaluation(
+             clf=model, 
+             X_test=X_test, 
+             y_test=y_test, 
+             predicted=predicted, 
+             n_classes=12, 
+             titulo='KNeighborsClassifier')
+    
+    ReportKNeighborsClassifier.generate_gridsearch_results('clf__n_neighbors', left_xlim=3, right_xlim=3, is_log=False)
+    ReportKNeighborsClassifier.print_basic_metrics()
+    ReportKNeighborsClassifier.print_classification_report()
+    #ReportKNeighborsClassifier.plot_error_matrix(labels=variables.vecclassesnamesen)
+    ReportKNeighborsClassifier.plot_error_matrix()
+    #ReportKNeighborsClassifier.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
+    ReportKNeighborsClassifier.plot_multiclass_roc()
+    ReportKNeighborsClassifier.export_predictions()
+   
 if (choose==str(6))or(choose==str(0)):
     print("\nMLPClassifier")
 
     pipeline = Pipeline([('vect', CountVectorizer()),
                           ('tfidf', TfidfTransformer()),
                           ('clf', MLPClassifier() )])
-    parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
+    parameters = {#'vect__ngram_range': [(1, 1)], # ok
+                  #'vect__ngram_range': [(1, 2)], # ok
+                  #'vect__ngram_range': [(1, 3)],  # ok
+                  'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
                   'vect__binary': [True],
+                  #'vect__max_features': [1000],   # ok
+                  #'vect__max_features': [2000],  # ok
+                  #'vect__max_features': [3000],  # ok
                   'vect__max_features': [1000, 2000, 3000],
                 'tfidf__use_idf': [True],
                 'tfidf__norm': ['l1'],
@@ -216,54 +347,167 @@ if (choose==str(6))or(choose==str(0)):
                 'clf__max_iter': [1000],
                 'clf__solver': ['lbfgs'],
                 'clf__activation': ['identity'],
-                'clf__hidden_layer_sizes': [(1000,),(1500,),(2000,)]}
+                #'clf__hidden_layer_sizes': [(1000,)]}
+                #'clf__hidden_layer_sizes': [(1500,)]}
+                #'clf__hidden_layer_sizes': [(2500,)]}
+                'clf__hidden_layer_sizes': [(1500,),(2000,),(2500,)]}
     
-    gs_clf = GridSearchCV(pipeline, parameters, cv=skf, n_jobs=-1, verbose=5)
-    gs_clf = gs_clf.fit(list(X_train), list(y_train))
-    print(gs_clf.best_score_)
-    print(gs_clf.best_params_)
-    results = pd.DataFrame(gs_clf.cv_results_)
-    results.to_excel( r'E:\python-projects\classification\docs\MLPClassifier.xlsx',sheet_name= 'MLPClassifier')
-
-    predicted = gs_clf.predict(list(X_test))
-    print(confusion_matrix(list(y_test), predicted))
-    print(classification_report(y_test, predicted, digits=4))
-    with open('models\MLPClassifier', 'wb') as picklefile:
-        pickle.dump(gs_clf,picklefile)
-
+    # 1 -> (1, 1) [1000] ok
+    # 2 -> (1, 1) [2000] ok
+    # 3 -> (1, 1) [3000] ok
+    # 4 -> (1, 2) [1000] ok
+    # 5 -> (1, 2) [2000] ok
+    # 6 -> (1, 2) [3000] ok
+    # 7 -> (1, 3) [1000] ok
+    # 8 -> (1, 3) [2000] ok
+    # 9 -> (1, 3) [3000] ok
+    # 10 ->(1, 1),(1, 2),(1, 3) e [1000, 2000, 3000]
+    
+    SetupMLPClassifier = setupTraining(pipeline=pipeline,
+                                 X_train=X_train,
+                                 X_test=X_test,
+                                 y_train=y_train,
+                                 y_test=y_test,
+                                 titulo='MLPClassifier')
+    
+    model = SetupMLPClassifier.perform_gridsearchcv(searchparameters=parameters,
+                                      cv=skf,
+                                      scoring=['accuracy','f1_weighted'],
+                                      refit='f1_weighted',
+                                      jobs=None)
+    
+    SetupMLPClassifier.plot_learning_curve(x=list_docs, 
+                                     y=list_labels,
+                                     model=model,
+                                     scoring='f1_weighted',
+                                     cv=skf)
+    SetupMLPClassifier.save_model(model=model)
+    
+    predicted = model.predict(list(X_test))
+    
+    ReportMLPClassifier = reportEvaluation(
+             clf=model, 
+             X_test=X_test, 
+             y_test=y_test, 
+             predicted=predicted, 
+             n_classes=12, 
+             titulo='MLPClassifier')
+    
+    ReportMLPClassifier.generate_gridsearch_results('clf__hidden_layer_sizes', left_xlim=200, right_xlim=200, is_log=False)
+    ReportMLPClassifier.print_basic_metrics()
+    ReportMLPClassifier.print_classification_report()
+    #ReportMLPClassifier.plot_error_matrix(labels=variables.vecclassesnamesen)
+    ReportMLPClassifier.plot_error_matrix()
+    #ReportMLPClassifier.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
+    ReportMLPClassifier.plot_multiclass_roc()
+    ReportMLPClassifier.export_predictions()
+    
 if (choose==str(7))or(choose==str(0)):
     print("\nRandomForestClassifier")
     pipeline = Pipeline([('vect', CountVectorizer()),
                           ('tfidf', TfidfTransformer()),
                           ('clf', RandomForestClassifier() )])
     parameters = {'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
-                  'vect__binary': [True, False],
+                  'vect__binary': [False],
                   'vect__max_features': [1000, 2000, 3000],
-                'tfidf__use_idf': [True, False],
-                'tfidf__norm': ['l1','l2'],
-                'tfidf__smooth_idf': [True, False],
-                'tfidf__sublinear_tf': [True, False],
-                'clf__n_estimators': [1000,2000,3000,4000],
-                'clf__criterion': ['gini','entropy'],
-                'clf__class_weight': ['balanced','balanced_subsample'],
-                'clf__verbose': [4],
+                'tfidf__use_idf': [False],
+                'tfidf__norm': ['l2'],
+                'tfidf__smooth_idf': [False],
+                'tfidf__sublinear_tf': [True],
+                'clf__max_depth': [50],
+                'clf__max_features': ['sqrt'],
+                'clf__min_samples_split': [25],
+                'clf__min_samples_leaf': [1],
+                'clf__bootstrap': [True],
+                'clf__oob_score': [True],
+                'clf__n_estimators': [1000, 1500, 2000],
+                'clf__criterion': ['gini'],
+                'clf__class_weight': ['balanced_subsample'],
+                'clf__verbose': [0],
+                'clf__random_state': [42],
                 'clf__n_jobs': [-1]}
-    
-    gs_clf = GridSearchCV(pipeline, parameters, cv=skf, n_jobs=-1, verbose=5, return_train_score=True)
-    
-    gs_clf = gs_clf.fit(list(X_train), list(y_train))
-    print(gs_clf.best_score_)
-    print(gs_clf.best_params_)
-    results = pd.DataFrame(gs_clf.cv_results_)
-    results.to_excel( r'E:\python-projects\classification\docs\RandomForestClassifier.xlsx',sheet_name= 'RandomForestClassifier')
 
-    predicted = gs_clf.predict(list(X_test))
-    print(confusion_matrix(list(y_test), predicted))
-    print(classification_report(y_test, predicted, digits=4))
-    with open('models\RandomForestClassifier', 'wb') as picklefile:
-        pickle.dump(gs_clf,picklefile)
-        
+
+    SetupRandomForestClassifier = setupTraining(pipeline=pipeline,
+                                 X_train=X_train,
+                                 X_test=X_test,
+                                 y_train=y_train,
+                                 y_test=y_test,
+                                 titulo='RandomForestClassifier')
+    
+    model = SetupRandomForestClassifier.perform_gridsearchcv(searchparameters=parameters,
+                                      cv=skf,
+                                      scoring=['accuracy','f1_weighted'],
+                                      refit='f1_weighted')
+
+    SetupRandomForestClassifier.plot_learning_curve(x=list_docs, 
+                                     y=list_labels,
+                                     model=model,
+                                     scoring='f1_weighted',
+                                     cv=skf)
+    SetupRandomForestClassifier.save_model(model=model)
+    
+    predicted = model.predict(list(X_test))
+    
+    ReportRandomForestClassifier = reportEvaluation(
+             clf=model, 
+             X_test=X_test, 
+             y_test=y_test, 
+             predicted=predicted, 
+             n_classes=12, 
+             titulo='RandomForestClassifier')
+    
+    ReportRandomForestClassifier.generate_gridsearch_results('clf__n_estimators', left_xlim=500, right_xlim=500, is_log=False)
+    ReportRandomForestClassifier.print_basic_metrics()
+    ReportRandomForestClassifier.print_classification_report()
+    #ReportRandomForestClassifier.plot_error_matrix(labels=variables.vecclassesnamesen)
+    ReportRandomForestClassifier.plot_error_matrix()
+    #ReportRandomForestClassifier.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
+    ReportRandomForestClassifier.plot_multiclass_roc()
+    ReportRandomForestClassifier.export_predictions()
+
 if (choose==str(8)):
+    print("\nRandomForestClassifierOpt")
+    pipeline = Pipeline([('vect', CountVectorizer()),
+                          ('tfidf', TfidfTransformer()),
+                          ('clf', RandomForestClassifier() )])
+    # define search space 
+    search = {
+        'vect__ngram_range': [(1, 1),(1, 2),(1, 3)],
+        'vect__binary': [False],
+        'vect__max_features': [1000, 2000, 3000],
+        'tfidf__use_idf': [False],
+        'tfidf__norm': ['l2'],
+        'tfidf__smooth_idf': [False],
+        'tfidf__sublinear_tf': [True],
+        'clf__max_depth': Integer(10, 50),
+        'clf__max_features': Categorical(['sqrt','auto']),
+        'clf__min_samples_split': Integer(1, 50),
+        'clf__min_samples_leaf': Integer(1, 50),
+        'clf__bootstrap': [True],
+        'clf__oob_score': [True],
+        'clf__n_estimators': Integer(500, 1500),
+        'clf__criterion': ['gini'],
+        'clf__class_weight': ['balanced_subsample'],
+        'clf__verbose': [0],
+        'clf__random_state': [42],
+        'clf__n_jobs': [-1]
+    }
+    opt = BayesSearchCV(
+        pipeline,
+        [(search, 16)],
+        cv=skf,
+        scoring='f1_weighted',
+        iid=True
+    )
+
+    opt.fit(X_train, y_train)
+
+    print("val. score: %s" % opt.best_score_)
+    print("test score: %s" % opt.score(X_test, y_test))
+    print("best params: %s" % str(opt.best_params_))
+
+if (choose==str(9)):
     pipeline = Pipeline([('vect', CountVectorizer()),
                           ('tfidf', TfidfTransformer()),
                           ('clf', TPOTClassifier(generations=5, population_size=50, verbosity=2, random_state=42, config_dict='TPOT sparse') )])
@@ -314,7 +558,7 @@ if (choose==str(-1)):
          
          ComplementNB.print_basic_metrics()
          ComplementNB.print_classification_report()
-         ComplementNB.plot_error_matrix(labels=variables.vecclassesnamesen)
+         ComplementNB.plot_error_matrix()
          ComplementNB.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
          
          ComplementNB.set_verbose_false()
@@ -344,7 +588,7 @@ if (choose==str(-1)):
          
          LinearSVC.print_basic_metrics()
          LinearSVC.print_classification_report()
-         LinearSVC.plot_error_matrix(labels=variables.vecclassesnamesen)
+         LinearSVC.plot_error_matrix()
          LinearSVC.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
          
          LinearSVC.set_verbose_false()
@@ -374,7 +618,7 @@ if (choose==str(-1)):
          
          SGDClassifier.print_basic_metrics()
          SGDClassifier.print_classification_report()
-         SGDClassifier.plot_error_matrix(labels=variables.vecclassesnamesen)
+         SGDClassifier.plot_error_matrix()
          SGDClassifier.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
          
          SGDClassifier.set_verbose_false()
@@ -404,7 +648,7 @@ if (choose==str(-1)):
          
          KNeighborsClassifier.print_basic_metrics()
          KNeighborsClassifier.print_classification_report()
-         KNeighborsClassifier.plot_error_matrix(labels=variables.vecclassesnamesen)
+         KNeighborsClassifier.plot_error_matrix()
          KNeighborsClassifier.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
          
          KNeighborsClassifier.set_verbose_false()
@@ -464,7 +708,7 @@ if (choose==str(-1)):
          
          RandomForestClassifier.print_basic_metrics()
          RandomForestClassifier.print_classification_report()
-         RandomForestClassifier.plot_error_matrix(labels=variables.vecclassesnamesen)
+         RandomForestClassifier.plot_error_matrix()
          RandomForestClassifier.plot_multiclass_roc(name_classes=variables.vecclassesnamesen)
          
          RandomForestClassifier.set_verbose_false()
@@ -476,3 +720,10 @@ if (choose==str(-1)):
          
     alldata=AllData.return_all_data()
     AllData.export_all_predictions()
+
+
+duration = 1500
+freq = 440
+winsound.Beep(freq, duration)
+
+#os.system("shutdown /s /t 1") 

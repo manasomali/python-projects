@@ -38,8 +38,8 @@ class setupTraining:
         self.titulo = titulo
         self.verbose = verbose
     
-    def perform_gridsearchcv(self, searchparameters, cv, scoring, refit):
-        gs_clf = GridSearchCV(self.pipeline, searchparameters, cv=cv, scoring=scoring, refit=refit, return_train_score=True, n_jobs=-1, verbose=5)
+    def perform_gridsearchcv(self, searchparameters, cv, scoring, refit, jobs=-1):
+        gs_clf = GridSearchCV(self.pipeline, searchparameters, cv=cv, scoring=scoring, refit=refit, return_train_score=True, n_jobs=jobs, verbose=5)
         gs_clf = gs_clf.fit(list(self.X_train), list(self.y_train))
 
         results = pd.DataFrame(gs_clf.cv_results_)
@@ -47,60 +47,43 @@ class setupTraining:
 
         
         if self.verbose==True:
-            print('Best Score: ' + str(gs_clf.best_score_))
+            print('Best Score ('+str(refit)+'): ' + str(gs_clf.best_score_))
             print('Best Params: ' + str(gs_clf.best_params_))
             
-        return gs_clf    
+        return gs_clf 
     
-    def plot_learning_curve(self, x, y, model, cv, train_sizes=np.linspace(.1, 1.0, 5)):
-        _, axes = plt.subplots(1, 3, figsize=(20, 5))
+    def plot_learning_curve(self, x, y, model, cv, scoring, train_sizes=np.linspace(.1, 1.0, 5)):
+        fig, ax = plt.subplots()
 
-        axes[0].set_title(self.titulo)
-        axes[0].set_xlabel("Training samples")
-        axes[0].set_ylabel("Score")
+        ax.set_title('Learning Curve '+str(self.titulo))
+        ax.set_xlabel("Training samples")
+        ax.set_ylabel("F1 Weighted")
     
         train_sizes, train_scores, test_scores, fit_times, _ = \
-            learning_curve(model, x, y, cv=cv, n_jobs=-1,
+            learning_curve(model, x, y, cv=cv, scoring=scoring, n_jobs=-1,
                            train_sizes=train_sizes,
                            return_times=True, random_state = 42)
         train_scores_mean = np.mean(train_scores, axis=1)
         train_scores_std = np.std(train_scores, axis=1)
         test_scores_mean = np.mean(test_scores, axis=1)
         test_scores_std = np.std(test_scores, axis=1)
-        fit_times_mean = np.mean(fit_times, axis=1)
-        fit_times_std = np.std(fit_times, axis=1)
     
         # Plot learning curve
-        axes[0].grid()
-        axes[0].fill_between(train_sizes, train_scores_mean - train_scores_std,
+        ax.grid()
+        ax.fill_between(train_sizes, train_scores_mean - train_scores_std,
                              train_scores_mean + train_scores_std, alpha=0.1,
                              color="r")
-        axes[0].fill_between(train_sizes, test_scores_mean - test_scores_std,
+        ax.fill_between(train_sizes, test_scores_mean - test_scores_std,
                              test_scores_mean + test_scores_std, alpha=0.1,
                              color="g")
-        axes[0].plot(train_sizes, train_scores_mean, 'o-', color="r",
+        ax.plot(train_sizes, train_scores_mean, 'o-', color="r",
                      label="Training score")
-        axes[0].plot(train_sizes, test_scores_mean, 'o-', color="g",
+        ax.plot(train_sizes, test_scores_mean, 'o-', color="g",
                      label="Cross-validation score")
-        axes[0].legend(loc="best")
+        ax.legend(loc="best")
     
-        # Plot n_samples vs fit_times
-        axes[1].grid()
-        axes[1].plot(train_sizes, fit_times_mean, 'o-')
-        axes[1].fill_between(train_sizes, fit_times_mean - fit_times_std,
-                             fit_times_mean + fit_times_std, alpha=0.1)
-        axes[1].set_xlabel("Training examples")
-        axes[1].set_ylabel("fit_times")
-        axes[1].set_title("Scalability of the model")
-    
-        # Plot fit_time vs score
-        axes[2].grid()
-        axes[2].plot(fit_times_mean, test_scores_mean, 'o-')
-        axes[2].fill_between(fit_times_mean, test_scores_mean - test_scores_std,
-                             test_scores_mean + test_scores_std, alpha=0.1)
-        axes[2].set_xlabel("fit_times")
-        axes[2].set_ylabel("Score")
-        axes[2].set_title("Performance of the model")
+        
+        plt.savefig('learningcurve\\' +self.titulo+ ".tiff", format="tiff", dpi=300, bbox_inches='tight')
 
         return 
     
@@ -177,6 +160,7 @@ class reportEvaluation:
             ax.legend(loc="lower right")
             ax.grid(alpha=.4)
             sns.despine()
+            plt.savefig('roc\\' +self.titulo+ ".tiff", format="tiff", dpi=300, bbox_inches='tight')
             plt.show()
             
         return {'model':self.titulo, 'fpr-micro':fpr["micro"], 'fpr-macro':fpr["macro"], 'tpr-micro':tpr["micro"], 'tpr-macro':tpr["macro"] , 'roc_auc-micro':roc_auc["micro"], 'roc_auc-macro':roc_auc["macro"]}
@@ -223,10 +207,69 @@ class reportEvaluation:
                                      cmap=color,
                                      xticks_rotation='vertical')
             cm.ax_.set_title('Confusion Matrix ' + str(self.titulo))
+            plt.savefig('confusionmatrix\\' +self.titulo+ ".tiff", format="tiff", dpi=300, bbox_inches='tight')
+
             print(cm.confusion_matrix)
             
         return {'model':self.titulo,
                  'confusion_matrix':confusion_matrix(self.y_test, self.predicted)}
+    
+    def generate_gridsearch_results(self, param_x, left_xlim, right_xlim,  top_ylim=0.005, bottom_ylim=0.005, is_log=False):
+        #titulo='RandomForestClassifier'
+        #param_x='clf__n_estimators'
+        #left_xlim=500
+        #right_xlim=500
+        #top_ylim=0.005
+        #bottom_ylim=0.005
+        #is_log=False
+        dados = pd.read_excel(os.path.join(pathlib.Path().absolute(), 'docs\\' + str(self.titulo) + '.xlsx'))
+        
+        dados["param_vect__max_features"].replace({1000:'tab:blue',2000:'tab:red',3000:'tab:green'}, inplace=True)
+        dados["param_vect__ngram_range"].replace({'(1, 1)':100,'(1, 2)':400,'(1, 3)':1600,'(1, 4)':3200,'(1, 5)':6400}, inplace=True)
+        
+        if param_x=="clf__hidden_layer_sizes":
+            dados["param_clf__hidden_layer_sizes"].replace({'(2500,)':2500,'(2000,)':2000,'(1500,)':1500}, inplace=True)
+
+        
+        xis = list(dados['param_'+str(param_x)])
+        
+        test_scores_mean = list(dados['mean_test_f1_weighted'])
+        
+        sizes = list(dados['param_vect__ngram_range'])
+        
+        colors = list(dados['param_vect__max_features'])
+        
+        ymax = max(test_scores_mean)
+        xpos = test_scores_mean.index(ymax)
+        xmax = xis[xpos]
+        
+        plt.figure()
+        plt.title(self.titulo, fontsize=12)
+        plt.xlabel(param_x, fontsize=12)
+        plt.ylabel('Mean F1 Weighted', fontsize=12)
+        
+        for x, test_score_mean, size, col in zip(xis, test_scores_mean, sizes, colors):
+            plt.scatter(x, test_score_mean, s=size, c=col, marker="_", linewidths=2)
+        
+        plt.annotate("{0:.4f}".format(ymax), xy = (xmax, ymax+0.001), ha='center')
+        
+        if(is_log):
+            plt.gca().set_xscale('log')
+            
+        plt.grid(True, alpha=0.5)
+        plt.xticks(list(set(xis)))
+        plt.xlim(min(xis)-left_xlim,max(xis)+right_xlim)
+        plt.ylim(min(test_scores_mean)-bottom_ylim,max(test_scores_mean)+top_ylim)
+        plt.savefig('gridsearch\\' +self.titulo+ ".tiff", format="tiff", dpi=300, bbox_inches='tight')
+        plt.show()
+    
+    def export_predictions(self):
+        predictions = pd.DataFrame(
+            {'Amostra': self.X_test,
+             'Verdadeira': self.y_test,
+             'Predição': list(self.predicted)
+            })
+        predictions.to_excel(os.path.join(pathlib.Path().absolute(), "predictions\\"+str(self.titulo)+".xlsx"),sheet_name=self.titulo)
 
 class compileModels:
     def __init__(self, X_test, y_test):
